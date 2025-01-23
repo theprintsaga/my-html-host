@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Mythology Map</title>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+  <style>
+    body, html { margin: 0; padding: 0; }
+    #map { height: 100vh; width: 100%; }
+    #popup-container {
+      font-family: 'Cinzel', serif;
+      font-size: 1em;
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 300px;
+      height: 350px;
+      padding: 15px;
+      background-size: cover;
+      background-position: center;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      display: none;
+      overflow-y: auto;
+    }
+
+    #popup-container::-webkit-scrollbar {
+      display: none; /* Chrome, Safari */
+    }
+
+    #popup-container {
+      -ms-overflow-style: none; /* IE and Edge */
+      scrollbar-width: none; /* Firefox */
+    }
+
+    #popup-container h3 {
+      margin: 0 0 10px;
+      font-size: 1.2em;
+    }
+
+    #popup-container ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    #popup-container ul li {
+      margin-bottom: 5px;
+    }
+
+    #popup-container ul li a {
+      color: #00d4ff;
+      text-decoration: none;
+    }
+
+    #popup-container ul li a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<div id="popup-container"></div>
+
+<script>
+  mapboxgl.accessToken = 'pk.eyJ1IjoidGhlcHJpbnRzYWdhIiwiYSI6ImNtNXljeGNhbjBidDAybG14b2d2YmQ3MXAifQ.pA3o4mIVYMqhQZDtOXDZJw';
+
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/satellite-v9',
+    center: [0, 20],
+    zoom: 2
+  });
+
+map.on('load', () => {
+      // Set galaxy-like fog effect (without the galaxy texture)
+      map.setFog({
+        range: [-1, 3], // Range of fog blending
+        color: 'rgba(0, 0, 0, 0.8)', // Dark galaxy-like color
+        "horizon-blend": 0.5, // Blend intensity at the horizon
+        "star-intensity": 0.2, // Add faint starry effect
+      });
+
+      const popupContainer = document.getElementById('popup-container');
+      let clickCounter = 0; // Track how many markers have been clicked
+  });
+
+  const mythologyGeoJSON = {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: {
+          mythology: "Norse",
+          characters: [
+            { name: "Odin", link: "https://en.wikipedia.org/wiki/Odin", biography: "All-Father and chief of the gods, associated with wisdom, war, poetry, and the runes. <a href='https://saffron-caper-576b.squarespace.com/config/' target='_blank'>Shop Odin Art</a>." },
+            { name: "Thor", link: "https://en.wikipedia.org/wiki/Thor", biography: "God of thunder, storms, and strength; protector of humanity, wielding the hammer Mjölnir." },
+            { name: "Ullr", link: "https://en.wikipedia.org/wiki/Ullr", biography: "God of hunting, archery, and winter; associated with skill in combat and skiing." },
+            { name: "Tyr", link: "https://en.wikipedia.org/wiki/T%C3%BDr", biography: "God of war, justice, and law; known for sacrificing his hand to bind the wolf Fenrir" },
+            { name: "Loki", link: "https://en.wikipedia.org/wiki/Loki", biography: "Trickster god of mischief, chaos, and shapeshifting; father of several monstrous beings." },
+            { name: "Freyja", link: "https://en.wikipedia.org/wiki/Freyja", biography: "Goddess of love, beauty, fertility, and war; leader of the Valkyries and associated with seiðr (magic)." },
+            { name: "Skadi", link: "https://en.wikipedia.org/wiki/Ska%C3%B0i", biography: "Goddess of winter, mountains, and skiing; also linked to hunting and retribution." },
+            { name: "Heimdallr", link: "https://en.wikipedia.org/wiki/Heimdall", biography: "Guardian of the Bifrost Bridge, associated with vigilance, foresight, and protection." },
+            { name: "Freyr", link: "https://en.wikipedia.org/wiki/Freyr", biography: "God of fertility, prosperity, and peace; associated with sunshine and rain." },
+            { name: "Frigg", link: "https://en.wikipedia.org/wiki/Frigg", biography: "Goddess of marriage, motherhood, and prophecy; wife of Odin and queen of the Æsir." },
+            { name: "Baldr", link: "https://en.wikipedia.org/wiki/Baldr", biography: "God of light, purity, and beauty; beloved by all, his death heralds Ragnarök." },
+            { name: "Njordr", link: "https://en.wikipedia.org/wiki/Nj%C3%B6r%C3%B0r", biography: "God of the sea, wind, and wealth; associated with prosperity and maritime safety." },
+            { name: "Fenrir", link: "https://en.wikipedia.org/wiki/Fenrir#:~:text=Fenrir%20(Old%20Norse%20'fen%2D,monstrous%20wolf%20in%20Norse%20mythology.", biography: "A monstrous wolf destined to kill Odin during Ragnarök; son of Loki." },
+            { name: "Ratatoskr", link: "https://en.wikipedia.org/wiki/Ratatoskr", biography: "A mischievous squirrel that delivers messages through the world tree." },
+            { name: "Nidhoggr", link: "https://en.wikipedia.org/wiki/N%C3%AD%C3%B0h%C3%B6ggr", biography: "A dragon that gnaws at the roots of Yggdrasil; represents decay." },
+            { name: "Jormungandr", link: "https://en.wikipedia.org/wiki/J%C3%B6rmungandr", biography: "The World Serpent that encircles Midgard." }
+          ],
+          image: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Odin_by_Johannes_Gehrts.jpg/512px-Odin_by_Johannes_Gehrts.jpg",
+          icon: "https://res.cloudinary.com/dwgeznr2w/image/upload/v1737436318/norsemythologymapicon_ap3abb.svg", // Custom icon for Norse
+          popupBgImage: "file:///C:/Users/Yancy/Downloads/norsemythologypopupbackground.svg" // Custom background for Norse popup
+        },
+        geometry: { type: "Point", coordinates: [7.1, 61] } // Norway
+      },
+      {
+        type: "Feature",
+        properties: {
+          mythology: "Greek",
+          characters: [
+            { name: "Zeus", link: "https://en.wikipedia.org/wiki/Zeus", biography: "King of the gods, ruler of the skies, and wielder of thunderbolts." },
+            { name: "Poseidon", link: "https://en.wikipedia.org/wiki/Poseidon", biography: "God of the sea, earthquakes, and horses, wielding a mighty trident." },
+            { name: "Ares", link: "https://en.wikipedia.org/wiki/Ares", biography: "God of war, embodying violence, aggression, and bloodshed." },
+            { name: "Aphrodite", link: "https://en.wikipedia.org/wiki/Aphrodite", biography: "Goddess of love, beauty, and desire, born from sea foam." },
+            { name: "Athena", link: "https://en.wikipedia.org/wiki/Athena", biography: "Goddess of wisdom, warfare strategy, and crafts, symbolized by the owl." }
+          ],
+          image: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Zeus_Otricoli_Pio-Clementino_Inv257.jpg/512px-Zeus_Otricoli_Pio-Clementino_Inv257.jpg",
+          icon: "https://res.cloudinary.com/dwgeznr2w/image/upload/v1737436139/greekmythologymapicon_vpvzie.svg", // Custom icon for Greek
+          popupBgImage: "file:///C:/Users/Yancy/Downloads/norsemythologypopupbackground.svg" // Custom background for Greek popup
+        },
+        geometry: { type: "Point", coordinates: [23.7, 37.9] } // Greece
+      },
+      {
+      type: "Feature",
+        properties: {
+          mythology: "Celtic",
+          characters: [
+            { name: "Dagda", link: "https://en.wikipedia.org/wiki/The_Dagda", biography: "The god of wisdom, fertility, and abundance, wielding a magical club and cauldron of plenty." },
+            { name: "The Morrigan", link: "https://en.wikipedia.org/wiki/The_Morr%C3%ADgan", biography: "A goddess of war, fate, and sovereignty, associated with crows, shape-shifting, and prophecy." },
+            { name: "Lugh", link: "https://en.wikipedia.org/wiki/Lugh#:~:text=Lugh%20or%20Lug%20(Old%20Irish,multiple%20disciplines%2C%20including%20the%20arts.", biography: "The multi-talented god of skill, craftsmanship, and the arts, often linked to the sun and heroic feats." },
+            { name: "Cernunnos", link: "https://en.wikipedia.org/wiki/Cernunnos", biography: "The horned god of nature, fertility, and animals, representing the wilderness and cycles of life." },
+            { name: "Danu", link: "https://en.wikipedia.org/wiki/Danu_(Irish_goddess)", biography: "The nurturing mother goddess of rivers, water, and the Tuatha Dé Danann, symbolizing fertility and wisdom." },
+            { name: "Cu Chulainn", link: "https://en.wikipedia.org/wiki/C%C3%BA_Chulainn", biography: "A legendary warrior-demigod known for his unmatched strength, courage, and the deadly spear Gáe Bolg." }
+          ],
+          image: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Odin_by_Johannes_Gehrts.jpg/512px-Odin_by_Johannes_Gehrts.jpg",
+          icon: "https://res.cloudinary.com/dwgeznr2w/image/upload/v1737435936/celticmythologymapicon_acrhbw.svg", // Custom icon for Celtic
+          popupBgImage: "file:///C:/Users/Yancy/Downloads/norsemythologypopupbackground.svg" // Custom background for Celtic popup
+        },
+        geometry: { type: "Point", coordinates: [-7.5, 54.5] } // Ireland
+       },
+       {
+      type: "Feature",
+        properties: {
+          mythology: "Egyptian",
+          characters: [
+            { name: "Thoth", link: "https://en.wikipedia.org/wiki/Thoth", biography: "The god of wisdom, writing, and knowledge, often depicted with the head of an ibis or a baboon, credited with inventing writing and maintaining the balance of the universe." },
+            { name: "Ra", link: "https://en.wikipedia.org/wiki/Ra", biography: "The sun god and creator deity, depicted as a falcon-headed figure crowned with a solar disk, embodying the life-giving power of the sun." },
+            { name: "Anubis", link: "https://en.wikipedia.org/wiki/Anubis", biography: "The jackal-headed god of mummification and the afterlife, guiding souls to the underworld and weighing their hearts against the feather of Ma'at." },
+            { name: "Isis", link: "https://en.wikipedia.org/wiki/Isis", biography: "The goddess of magic, healing, and motherhood, revered as a protector of the dead and a devoted wife who resurrected Osiris." },
+            { name: "Sobek", link: "https://en.wikipedia.org/wiki/Sobek", biography: "The crocodile-headed god of the Nile, fertility, and military prowess, symbolizing protection and the might of the river that sustained Egypt." }
+          ],
+          image: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Odin_by_Johannes_Gehrts.jpg/512px-Odin_by_Johannes_Gehrts.jpg",
+          icon: "https://res.cloudinary.com/dwgeznr2w/image/upload/v1737436063/egyptianmythologymapicon_c53xag.svg", // Custom icon for Egyptian
+          popupBgImage: "file:///C:/Users/Yancy/Downloads/norsemythologypopupbackground.svg" // Custom background for Egyptian popup
+        },
+        geometry: { type: "Point", coordinates: [27.2, 26.5] } // Egypt
+       },
+{
+      type: "Feature",
+        properties: {
+          mythology: "Roman",
+          characters: [
+            { name: "Jupiter", link: "https://en.wikipedia.org/wiki/Jupiter_(god)", biography: "The king of the gods and ruler of the skies, associated with thunder and lightning, often depicted holding a lightning bolt and symbolizing authority and justice." },
+            { name: "Venus", link: "https://en.wikipedia.org/wiki/Venus_(mythology)", biography: "The goddess of love, beauty, and desire, depicted as a radiant figure symbolizing passion, fertility, and the allure of the natural world." },
+            { name: "Minerva", link: "https://en.wikipedia.org/wiki/Minerva", biography: "The goddess of wisdom, strategy, and crafts, often depicted with an owl and a shield, symbolizing intellect, creativity, and war tempered by reason." },
+            { name: "Hercules", link: "https://en.wikipedia.org/wiki/Hercules", biography: "The demigod of strength and heroism, known for his incredible feats during the Twelve Labors, embodying perseverance and courage in the face of challenges." },
+            { name: "Diana", link: "https://en.wikipedia.org/wiki/Diana_(mythology)", biography: "The goddess of the hunt, the moon, and nature, often shown with a bow and quiver, representing independence, wild beauty, and the protection of women." }
+          ],
+          image: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Odin_by_Johannes_Gehrts.jpg/512px-Odin_by_Johannes_Gehrts.jpg",
+          icon: "https://res.cloudinary.com/dwgeznr2w/image/upload/v1737436395/romanmythologymapicon_stgh2w.svg", // Custom icon for Roman
+          popupBgImage: "file:///C:/Users/Yancy/Downloads/norsemythologypopupbackground.svg" // Custom background for Roman popup
+        },
+        geometry: { type: "Point", coordinates: [12, 43] } // Italy
+       },
+{
+      type: "Feature",
+        properties: {
+          mythology: "Hindu",
+          characters: [
+            { name: "Brahma", link: "https://en.wikipedia.org/wiki/Brahma", biography: "The creator of the universe, often depicted with four heads symbolizing the four Vedas, embodying knowledge, creation, and the infinite cycle of life." },
+            { name: "Shiva", link: "https://en.wikipedia.org/wiki/Shiva", biography: "The destroyer and transformer, known as the lord of meditation and cosmic dance, often depicted with a crescent moon, a serpent, and the trident, symbolizing destruction and renewal." },
+            { name: "Vishnu", link: "https://en.wikipedia.org/wiki/Vishnu", biography: "The preserver and protector of the universe, depicted reclining on the serpent Ananta or with his conch and discus, representing order, balance, and divine intervention." },
+            { name: "Lakshmi", link: "https://en.wikipedia.org/wiki/Lakshmi", biography: "The goddess of wealth, prosperity, and abundance, often depicted with golden coins flowing from her hands and seated on a lotus, embodying fortune and well-being." },
+            { name: "Saraswati", link: "https://en.wikipedia.org/wiki/Saraswati", biography: "The goddess of wisdom, learning, and the arts, often shown playing the veena and surrounded by books and swans, symbolizing knowledge, creativity, and spiritual enlightenment." }
+          ],
+          image: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Odin_by_Johannes_Gehrts.jpg/512px-Odin_by_Johannes_Gehrts.jpg",
+          icon: "https://res.cloudinary.com/dwgeznr2w/image/upload/v1737436189/hindumythologymapicon_ymzasl.svg", // Custom icon for Hindu
+          popupBgImage: "file:///C:/Users/Yancy/Downloads/norsemythologypopupbackground.svg" // Custom background for Hindu popup
+        },
+        geometry: { type: "Point", coordinates: [78, 25] } // India
+       },
+{
+      type: "Feature",
+        properties: {
+          mythology: "Chinese",
+          characters: [
+            { name: "Pangu", link: "https://en.wikipedia.org/wiki/Pangu#:~:text=Pangu%20or%20Pan%20Gu%20(Chinese,of%20Pangu%20from%20Sancai%20Tuhui", biography: "The primordial being who created the universe by splitting the cosmic egg and shaping the world from his body." },
+            { name: "Jade Emporer", link: "https://en.wikipedia.org/wiki/Jade_Emperor", biography: "The supreme ruler of heaven in Chinese mythology, overseeing the celestial bureaucracy and governing all gods." },
+            { name: "Chang'e", link: "https://en.wikipedia.org/wiki/Chang%27e", biography: "The moon goddess, known for her tragic tale of flying to the moon after consuming an immortality elixir." },
+            { name: "Sun Wukong", link: "https://en.wikipedia.org/wiki/Monkey_King", biography: "The mischievous Monkey King with supernatural powers, famous for his role in the classic tale Journey to the West." },
+            { name: "Ao Guang", link: "https://en.wikipedia.org/wiki/Ao_Guang", biography: "The Dragon King of the East Sea, known for his control over the oceans and conflict with the heavens in various myths." }
+          ],
+          image: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Odin_by_Johannes_Gehrts.jpg/512px-Odin_by_Johannes_Gehrts.jpg",
+          icon: "https://res.cloudinary.com/dwgeznr2w/image/upload/v1737436056/chinesemythologymapicon_fdy1pu.svg", // Custom icon for Chinese
+          popupBgImage: "file:///C:/Users/Yancy/Downloads/norsemythologypopupbackground.svg" // Custom background for Chinese popup
+        },
+        geometry: { type: "Point", coordinates: [110, 32] } // China
+       },
+{
+      type: "Feature",
+        properties: {
+          mythology: "Japanese",
+          characters: [
+            { name: "Susanoo", link: "https://en.wikipedia.org/wiki/Susanoo-no-Mikoto", biography: "The storm god of seas and chaos, known for his tempestuous spirit and heroic deeds, wielding divine power over storms and embodying both destruction and renewal." },
+            { name: "Amaterasu", link: "https://en.wikipedia.org/wiki/Amaterasu", biography: "The radiant sun goddess and sovereign of the celestial plain, revered as the bringer of light, warmth, and life, symbolizing purity and the unyielding power of the sun." },
+            { name: "Tsukuyomi", link: "https://simple.wikipedia.org/wiki/Tsukuyomi#:~:text=Tsukuyomi%20(Japanese%3A%20%E6%9C%88%E8%AA%AD)%2C,artwork%20of%20Tsukuyomi%2Dno%2DMikoto", biography: "The mysterious moon god, serene and distant, ruling the night and representing the calm yet vigilant balance of darkness and light." },
+            { name: "Raijin", link: "https://en.wikipedia.org/wiki/Raijin#:~:text=Raijin%20(%E9%9B%B7%E7%A5%9E%2C%20lit.,mythology%20and%20the%20Shinto%20religion.", biography: "The thunder god and master of storms, depicted with fierce energy, wielding drums to unleash thunderclaps and symbolizing power and protection." },
+            { name: "Fujin", link: "https://en.wikipedia.org/wiki/F%C5%ABjin", biography: "The wind god and harbinger of breezes and tempests, known for his playful yet formidable force, embodying freedom and the ever-shifting nature of the skies." }
+          ],
+          image: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Odin_by_Johannes_Gehrts.jpg/512px-Odin_by_Johannes_Gehrts.jpg",
+          icon: "https://res.cloudinary.com/dwgeznr2w/image/upload/v1737436196/japanesemythologymapicon_okyee5.svg", // Custom icon for Japanese
+          popupBgImage: "file:///C:/Users/Yancy/Downloads/norsemythologypopupbackground.svg" // Custom background for Japanese popup
+        },
+        geometry: { type: "Point", coordinates: [138.7, 36.2] } // Japan
+       },
+{
+      type: "Feature",
+        properties: {
+          mythology: "Sumerian",
+          characters: [
+            { name: "Anu", link: "https://en.wikipedia.org/wiki/Anu", biography: "The supreme sky god and father of the divine pantheon, often associated with the vast heavens and stars, symbolizing authority, order, and the celestial domain." },
+            { name: "Inanna", link: "https://en.wikipedia.org/wiki/Inanna#:~:text=Inanna%20is%20the%20ancient%20Mesopotamian,divine%20law%2C%20and%20political%20power.", biography: "The goddess of love, war, and fertility, known for her duality of passion and power, often depicted as a radiant figure wielding authority over life and death." },
+            { name: "Enki", link: "https://en.wikipedia.org/wiki/Enki#:~:text=Enki%20(Sumerian%3A%20%F0%92%80%AD%F0%92%82%97%F0%92%86%A0EN%2D,and%20one%20of%20the%20Anunnaki.", biography: "The god of wisdom, water, and creation, depicted as a guardian of life’s mysteries and a provider of abundance, symbolizing ingenuity, fertility, and knowledge." },
+            { name: "Enlil", link: "https://en.wikipedia.org/wiki/Enlil#:~:text=Enlil%2C%20later%20known%20as%20Elil,Babylonians%2C%20Assyrians%2C%20and%20Hurrians.", biography: "The god of wind, storms, and earth, known as the force behind natural power and divine decrees, embodying kingship and the breath of life." },
+            { name: "Ki", link: "https://en.wikipedia.org/wiki/Ki_(goddess)", biography: "The earth goddess and embodiment of the fertile land, representing the nurturing force of nature and the motherly essence of life’s foundation." }
+          ],
+          image: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Odin_by_Johannes_Gehrts.jpg/512px-Odin_by_Johannes_Gehrts.jpg",
+          icon: "https://res.cloudinary.com/dwgeznr2w/image/upload/v1737436402/sumerianmythologymapicon_pqausp.svg", // Custom icon for Sumerian
+          popupBgImage: "file:///C:/Users/Yancy/Downloads/norsemythologypopupbackground.svg" // Custom background for Sumerian popup
+        },
+        geometry: { type: "Point", coordinates: [48.2, 32.2] } // Iraq
+       },
+{
+      type: "Feature",
+        properties: {
+          mythology: "Polynesian",
+          characters: [
+            { name: "Kane", link: "https://en.wikipedia.org/wiki/K%C4%81ne", biography: "The god of creation, life, and the sky, often associated with fresh water and fertility." },
+            { name: "Pele", link: "https://en.wikipedia.org/wiki/Pele_(deity)", biography: "The fiery goddess of volcanoes and creation, known for her passionate and volatile nature." },
+            { name: "Ku", link: "https://en.wikipedia.org/wiki/K%C5%AB", biography: "The god of war, strength, and power, often worshipped by warriors and hunters." },
+            { name: "Hina", link: "https://en.wikipedia.org/wiki/Hina_(goddess)", biography: "The goddess of the moon, known for her beauty and connection to the tides and the ocean." },
+            { name: "Kanaloa", link: "https://en.wikipedia.org/wiki/Kanaloa", biography: "The god of the sea, ocean, and healing, often depicted as a companion to the god Kane." }
+          ],
+          image: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Odin_by_Johannes_Gehrts.jpg/512px-Odin_by_Johannes_Gehrts.jpg",
+          icon: "https://res.cloudinary.com/dwgeznr2w/image/upload/v1737436327/polynesianmythologymapicon_rdkwnu.svg", // Custom icon for Polynesian
+          popupBgImage: "file:///C:/Users/Yancy/Downloads/norsemythologypopupbackground.svg" // Custom background for Polynesian popup
+        },
+        geometry: { type: "Point", coordinates: [-165, 2.2] } // Pacific Ocean
+       },
+{
+      type: "Feature",
+        properties: {
+          mythology: "Mayan",
+          characters: [
+            { name: "Itzamna", link: "https://en.wikipedia.org/wiki/Itzamna", biography: "The supreme creator god, associated with wisdom, the sky, and the moon, often seen as a teacher and protector of humanity." },
+            { name: "Chaac", link: "https://en.wikipedia.org/wiki/Chaac", biography: "The god of rain, storms, and lightning, vital for agricultural fertility and the sustenance of crops." },
+            { name: "Ah Puch", link: "https://en.wikipedia.org/wiki/Cizin", biography: "The god of death, decay, and the underworld, often depicted as a skeletal figure ruling over the afterlife." },
+            { name: "Ix Chel", link: "https://en.wikipedia.org/wiki/Ixchel", biography: "The goddess of the moon, love, fertility, medicine, and weaving, also revered as a protector of women." },
+            { name: "Awilix", link: "https://en.wikipedia.org/wiki/Awilix", biography: "The goddess of the moon and night, associated with the underworld and the cycles of life and death." }
+          ],
+          image: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Odin_by_Johannes_Gehrts.jpg/512px-Odin_by_Johannes_Gehrts.jpg",
+          icon: "https://res.cloudinary.com/dwgeznr2w/image/upload/v1737436205/mayanmythologymapicon_acwgyt.svg", // Custom icon for Mayan
+          popupBgImage: "file:///C:/Users/Yancy/Downloads/norsemythologypopupbackground.svg" // Custom background for Mayan popup
+        },
+        geometry: { type: "Point", coordinates: [-89, 19.7] } // Yucatan
+       },
+{
+      type: "Feature",
+      properties: {
+        mythology: "Aztec",
+        characters: [
+          { name: "Tonacatecuhtli", link: "https://en.wikipedia.org/wiki/T%C5%8Dnac%C4%81t%C4%93cuhtli", biography: "The god of food and sustenance, representing the earth's ability to nourish and provide for all living beings." },
+          { name: "Tonacacihuatl", link: "https://en.wikipedia.org/wiki/T%C5%8Dnac%C4%81cihu%C4%81tl", biography: "The goddess of fertility, abundance, and nourishment, often associated with the creation of humanity and the provision of life-sustaining resources." },
+          { name: "Quetzalcoatl", link: "https://en.wikipedia.org/wiki/Quetzalc%C5%8D%C4%81tl#:~:text=Quetzalcoatl%20(%2F%CB%8Ck%C9%9Bt,god%20of%20the%20Aztec%20priesthood.", biography: "The feathered serpent god of wisdom, wind, and life, revered for his creation of humanity and the arts." },
+          { name: "Tezcatlipoca", link: "https://en.wikipedia.org/wiki/Tezcatlipoca", biography: "The god of the night sky, destiny, and conflict, known for his power and association with jaguars and obsidian." },
+          { name: "Huitzilopochtli", link: "https://en.wikipedia.org/wiki/Hu%C4%ABtzil%C5%8Dp%C5%8Dchtli#:~:text=Huitzilopochtli%20(Classical%20Nahuatl%3A%20Hu%C4%ABtzil%C5%8Dp%C5%8Dchtli%2C,and%20their%20capital%20city%2C%20Tenochtitlan.", biography: "The god of the sun and war, revered as the patron deity of the Aztec capital, Tenochtitlan." },
+          { name: "Xipe Totec", link: "https://en.wikipedia.org/wiki/Xipe_Totec", biography: "The god of agriculture, fertility, and renewal, often depicted wearing a flayed skin to symbolize regeneration." }
+          ],
+          image: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Odin_by_Johannes_Gehrts.jpg/512px-Odin_by_Johannes_Gehrts.jpg",
+          icon: "https://res.cloudinary.com/dwgeznr2w/image/upload/v1737435765/aztecmythologymapicon_tdg4qk.svg", // Custom icon for Aztec
+          popupBgImage: "file:///C:/Users/Yancy/Downloads/norsemythologypopupbackground.svg" // Custom background for Aztec popup
+        },
+        geometry: { type: "Point", coordinates: [-101, 23.6] } // Mexico
+       }
+   ]
+ };
+
+    // Sort characters alphabetically for each mythology
+    mythologyGeoJSON.features.forEach((feature) => {
+      feature.properties.characters.sort((a, b) => a.name.localeCompare(b.name));
+    });
+
+    const popupContainer = document.getElementById('popup-container'); // Common popup for mythology markers
+
+    // Set Mount Everest Coordinates
+    const everestCoordinates = [86.9250, 27.9881]; // [Longitude, Latitude]
+
+    // Map initialization
+    map.on('load', () => {
+      // Place the discount code text at Mount Everest's coordinates
+      addDiscountCodeAtEverest(everestCoordinates);
+
+      // Mythology markers and other logic remain the same
+      mythologyGeoJSON.features.forEach((feature) => {
+        const { mythology, characters, popupBgImage, icon } = feature.properties;
+        const coordinates = feature.geometry.coordinates;
+
+        // Create a custom icon for the marker if defined
+        let markerElement;
+        if (icon) {
+          const customIcon = new Image();
+          customIcon.src = icon;
+          customIcon.style.width = '150px';
+          customIcon.style.height = '150px';
+          markerElement = customIcon;
+        }
+
+        const marker = new mapboxgl.Marker(markerElement || undefined)
+          .setLngLat(coordinates)
+          .addTo(map)
+          .getElement()
+          .addEventListener('click', () => {
+            popupContainer.style.display = 'block';
+            popupContainer.style.backgroundImage = `url('${popupBgImage}')`;
+            popupContainer.innerHTML = ` 
+              <h3>${mythology} Mythology</h3>
+              <ul>
+                ${characters
+                  .map(
+                    (char) =>
+                      `<li><a href="${char.link}" target="_blank">${char.name}</a>: <span>${char.biography}</span></li>`
+                  )
+                  .join('')}
+              </ul>
+            `;
+            map.flyTo({ center: coordinates, zoom: 5 });
+          });
+      });
+    });
+
+    // Hide popup when clicking outside markers
+    map.on('click', (e) => {
+      if (!e.originalEvent.target.closest('.mapboxgl-marker')) {
+        popupContainer.style.display = 'none';
+      }
+    });
+
+    // Function to "tattoo" the discount code at Mount Everest's coordinates
+    let discountMarker; // Store the discount marker globally
+    let copiedMessageElement; // Store the copied message element globally
+
+    function addDiscountCodeAtEverest(coordinates) {
+      // Create the discount code marker element
+      const discountMarkerElement = document.createElement('div');
+      discountMarkerElement.classList.add('discount-marker');
+      discountMarkerElement.innerHTML = 'Use code <b>DISCOVER20</b> for 20% off!';
+
+      // Create the "Copied!" message element
+      copiedMessageElement = document.createElement('div');
+      copiedMessageElement.classList.add('copied-message');
+      copiedMessageElement.innerText = 'Copied!';
+
+      // Add click event to copy the discount code to the clipboard
+      discountMarkerElement.addEventListener('click', () => {
+        const discountCode = 'DISCOVER20';
+        
+        // Try to copy the discount code to the clipboard
+        navigator.clipboard.writeText(discountCode).then(() => {
+          showCopiedMessage(discountMarkerElement); // Show the "Copied!" message above the marker
+        }).catch((err) => {
+          console.error('Failed to copy text: ', err);
+        });
+      });
+
+      // Create the discount marker at Mount Everest's coordinates
+      discountMarker = new mapboxgl.Marker({
+        element: discountMarkerElement,
+        anchor: 'center', // Ensure the text is centered
+      })
+        .setLngLat(coordinates)
+        .addTo(map);
+
+      // Initially hide the discount code marker
+      discountMarker.getElement().style.display = 'none'; // Hide it initially
+
+      // Create the "Copied!" message element and add it to the map
+      new mapboxgl.Marker({
+        element: copiedMessageElement,
+        anchor: 'bottom',
+      })
+        .setLngLat(coordinates)
+        .addTo(map)
+        .getElement()
+        .style.display = 'none'; // Hide it initially
+    }
+
+    // Show the "Copied!" message and fade it out
+    function showCopiedMessage(markerElement) {
+      const copiedMessage = copiedMessageElement;
+      
+      // Position the "Copied!" message just above the marker
+      const markerPosition = markerElement.getBoundingClientRect();
+      copiedMessage.style.left = `${markerPosition.left + markerPosition.width / 2 - copiedMessage.offsetWidth / 2}px`;
+      copiedMessage.style.bottom = `${markerPosition.top + markerPosition.height + 10}px`; // Just above the marker
+      copiedMessage.style.display = 'block';
+      copiedMessage.style.opacity = 1;
+
+      // After 2 seconds, fade the message out
+      setTimeout(() => {
+        copiedMessage.style.opacity = 0;
+        setTimeout(() => {
+          copiedMessage.style.display = 'none';
+        }, 300); // Hide the message after fade-out
+      }, 2000); // Keep the message visible for 2 seconds
+    }
+
+    // Map zoom event listener
+    map.on('zoom', () => {
+      const zoomLevel = map.getZoom();
+
+      // Show the discount code when zoom level is above 8
+      if (zoomLevel >= 8) {
+        discountMarker.getElement().style.display = 'block';
+      } else {
+        discountMarker.getElement().style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>
